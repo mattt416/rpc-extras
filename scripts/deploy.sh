@@ -4,6 +4,7 @@ set -e -u -x
 set -o pipefail
 source /opt/rpc-openstack/os-ansible-deployment/scripts/scripts-library.sh
 
+export ANSIBLE_ROLE_FILE=${ANSIBLE_ROLE_FILE:-"/opt/rpc-openstack/ansible-role-requirements.yml"}
 export ADMIN_PASSWORD=${ADMIN_PASSWORD:-"secrete"}
 export DEPLOY_AIO=${DEPLOY_AIO:-"no"}
 export DEPLOY_HAPROXY=${DEPLOY_HAPROXY:-"no"}
@@ -12,9 +13,12 @@ export DEPLOY_ELK=${DEPLOY_ELK:-"yes"}
 export DEPLOY_MAAS=${DEPLOY_MAAS:-"yes"}
 export DEPLOY_TEMPEST=${DEPLOY_TEMPEST:-"no"}
 export DEPLOY_CEILOMETER=${DEPLOY_CEILOMETER:-"no"}
+export DEPLOY_CEPH=${DEPLOY_CEPH:-"no"}
 
 OSAD_DIR='/opt/rpc-openstack/os-ansible-deployment'
 RPCD_DIR='/opt/rpc-openstack/rpcd'
+RPCD_VARS='/etc/openstack_deploy/user_extras_variables.yml'
+RPCD_SECRETS='/etc/openstack_deploy/user_extras_secrets.yml'
 
 # begin the bootstrap process
 cd ${OSAD_DIR}
@@ -31,13 +35,28 @@ if [[ "${DEPLOY_AIO}" == "yes" ]]; then
         for i in $(find etc/openstack_deploy/ -type f -iname '*.yml'); do ../scripts/update-yaml.py /$i $i; done
     popd
     # ensure that the elasticsearch JVM heap size is limited
-    sed -i 's/# elasticsearch_heap_size_mb/elasticsearch_heap_size_mb/' /etc/openstack_deploy/user_extras_variables.yml
+    sed -i 's/# elasticsearch_heap_size_mb/elasticsearch_heap_size_mb/' $RPCD_VARS
     # set the kibana admin password
-    sed -i "s/kibana_password:.*/kibana_password: ${ADMIN_PASSWORD}/" /etc/openstack_deploy/user_extras_secrets.yml
+    sed -i "s/kibana_password:.*/kibana_password: ${ADMIN_PASSWORD}/" $RPCD_SECRETS
     # set the load balancer name to the host's name
-    sed -i "s/lb_name: .*/lb_name: '$(hostname)'/" /etc/openstack_deploy/user_extras_variables.yml
+    sed -i "s/lb_name: .*/lb_name: '$(hostname)'/" $RPCD_VARS
     # set the notification_plan to the default for Rackspace Cloud Servers
-    sed -i "s/maas_notification_plan: .*/maas_notification_plan: npTechnicalContactsEmail/" /etc/openstack_deploy/user_extras_variables.yml
+    sed -i "s/maas_notification_plan: .*/maas_notification_plan: npTechnicalContactsEmail/" $RPCD_VARS
+    # set the necessary bits for ceph
+    if [[ "$DEPLOY_CEPH" == "yes" ]]; then
+      cp -a ${RPCD_DIR}/etc/openstack_deploy/conf.d/ceph.yml.aio /etc/openstack_deploy/conf.d/ceph.yml
+      # NOTE: these are non-sensical values; we need to revisit!
+      echo "ceph_stable: true" | tee -a $RPCD_VARS
+      echo "journal_size: 5120" | tee -a $RPCD_VARS
+      echo "monitor_interface: eth1" | tee -a $RPCD_VARS
+      echo "public_network: 172.29.236.0/22" | tee -a $RPCD_VARS
+      echo "osd_directory: true" | tee -a $RPCD_VARS
+      echo "osd_directories:" | tee -a $RPCD_VARS
+      echo "  - /var/lib/ceph/osd/mydir1" | tee -a $RPCD_VARS
+      # NOTE: we could create 3 osd containers so we have 3 osds on "separate" hosts, however I'd prefer to
+      #       not deviate too much from a production deploy where an OSD should live on the physical host
+      echo "pool_default_size: 1" | tee -a $RPCD_VARS
+    fi
     # set the ansible inventory hostname to the host's name
     sed -i "s/aio1/$(hostname)/" /etc/openstack_deploy/openstack_user_config.yml
     sed -i "s/aio1/$(hostname)/" /etc/openstack_deploy/conf.d/*.yml
@@ -48,7 +67,7 @@ fi
 which openstack-ansible || ./scripts/bootstrap-ansible.sh
 
 # ensure all needed passwords and tokens are generated
-./scripts/pw-token-gen.py --file /etc/openstack_deploy/user_extras_secrets.yml
+./scripts/pw-token-gen.py --file $RPCD_SECRETS
 
 # begin the openstack installation
 if [[ "${DEPLOY_OSAD}" == "yes" ]]; then

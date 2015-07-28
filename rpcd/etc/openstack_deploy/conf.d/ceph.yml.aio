@@ -1,0 +1,5 @@
+ceph_hosts:
+  aio1:
+    ip: 172.29.236.100
+    affinity:
+      ceph_mon_container: 3

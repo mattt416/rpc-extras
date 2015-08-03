@@ -34,3 +34,12 @@ ssl_cipher_suite: "ECDH+AESGCM:DH+AESGCM:ECDH+AES256:DH+AES256:ECDH+AES128:DH+AE
 # Keystone overrides
 keystone_token_provider: "keystone.token.providers.uuid.Provider"
 keystone_token_driver: "keystone.token.persistence.backends.sql.Token"
+
+ceph_mons: >
+  {% set _var = [] -%}
+  {% if 'mons' in groups -%}
+  {% for mon in groups.mons -%}
+  {% if _var.append(hostvars[mon]['ansible_ssh_host']) -%}{% endif -%}
+  {% endfor -%}
+  {% endif -%}
+  {{ _var }}

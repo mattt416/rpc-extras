@@ -45,6 +45,7 @@ if [[ "${DEPLOY_AIO}" == "yes" ]]; then
     # set the necessary bits for ceph
     if [[ "$DEPLOY_CEPH" == "yes" ]]; then
       cp -a ${RPCD_DIR}/etc/openstack_deploy/conf.d/ceph.yml.aio /etc/openstack_deploy/conf.d/ceph.yml
+
       # NOTE: these are non-sensical values; we need to revisit!
       echo "ceph_stable: true" | tee -a $RPCD_VARS
       echo "journal_size: 5120" | tee -a $RPCD_VARS
@@ -56,6 +57,9 @@ if [[ "${DEPLOY_AIO}" == "yes" ]]; then
       # NOTE: we could create 3 osd containers so we have 3 osds on "separate" hosts, however I'd prefer to
       #       not deviate too much from a production deploy where an OSD should live on the physical host
       echo "pool_default_size: 1" | tee -a $RPCD_VARS
+      sed -i "s/glance_default_store:.*/glance_default_store: rbd/" /etc/openstack_deploy/user_variables.yml
+      echo "nova_libvirt_images_rbd_pool: vms" | tee -a /etc/openstack_deploy/user_variables.yml
+      echo "cinder_ceph_client_uuid:"  | tee -a /etc/openstack_deploy/user_secrets.yml
     fi
     # set the ansible inventory hostname to the host's name
     sed -i "s/aio1/$(hostname)/" /etc/openstack_deploy/openstack_user_config.yml
@@ -67,6 +71,7 @@ fi
 which openstack-ansible || ./scripts/bootstrap-ansible.sh
 
 # ensure all needed passwords and tokens are generated
+./scripts/pw-token-gen.py --file /etc/openstack_deploy/user_secrets.yml
 ./scripts/pw-token-gen.py --file $RPCD_SECRETS
 
 # begin the openstack installation
@@ -86,6 +91,12 @@ if [[ "${DEPLOY_OSAD}" == "yes" ]]; then
 
   # setup the hosts and build the basic containers
   install_bits setup-hosts.yml
+
+  if [[ "$DEPLOY_CEPH" == "yes" ]]; then
+    pushd ${RPCD_DIR}/playbooks/
+      install_bits ceph.yml
+    popd
+  fi
 
   # setup the infrastructure
   install_bits setup-infrastructure.yml

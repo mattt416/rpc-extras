@@ -25,14 +25,14 @@ component_skel:
 container_skel:
   ceph_mon_container:
     belongs_to:
-      - ceph_containers
+      - mons_containers
     contains:
       - mons
     properties:
       container_release: trusty
   ceph_osd_container:
     belongs_to:
-      - ceph_containers
+      - osds_containers
     contains:
       - osds
     properties:
@@ -41,9 +41,15 @@ container_skel:
 
 
 physical_skel:
-  ceph_containers:
+  osds_containers:
     belongs_to:
       - all_containers
-  ceph_hosts:
+  osds_hosts:
+    belongs_to:
+      - hosts
+  mons_containers:
+    belongs_to:
+      - all_containers
+  mons_hosts:
     belongs_to:
       - hosts

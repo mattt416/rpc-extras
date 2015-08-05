@@ -46,6 +46,10 @@ if [[ "${DEPLOY_AIO}" == "yes" ]]; then
     if [[ "$DEPLOY_CEPH" == "yes" ]]; then
       cp -a ${RPCD_DIR}/etc/openstack_deploy/conf.d/ceph.yml.aio /etc/openstack_deploy/conf.d/ceph.yml
 
+      # In production, the OSDs will run on bare metal however in the AIO we'll put them in containers
+      # so the MONs think we have 3 OSDs on different hosts.
+      sed -i 's/is_metal: true/is_metal: false/' /etc/openstack_deploy/env.d/ceph.yml
+
       # NOTE: these are non-sensical values; we need to revisit!
       echo "ceph_stable: true" | tee -a $RPCD_VARS
       echo "journal_size: 5120" | tee -a $RPCD_VARS
@@ -54,9 +58,6 @@ if [[ "${DEPLOY_AIO}" == "yes" ]]; then
       echo "osd_directory: true" | tee -a $RPCD_VARS
       echo "osd_directories:" | tee -a $RPCD_VARS
       echo "  - /var/lib/ceph/osd/mydir1" | tee -a $RPCD_VARS
-      # NOTE: we could create 3 osd containers so we have 3 osds on "separate" hosts, however I'd prefer to
-      #       not deviate too much from a production deploy where an OSD should live on the physical host
-      echo "pool_default_size: 1" | tee -a $RPCD_VARS
       sed -i "s/glance_default_store:.*/glance_default_store: rbd/" /etc/openstack_deploy/user_variables.yml
       echo "nova_libvirt_images_rbd_pool: vms" | tee -a /etc/openstack_deploy/user_variables.yml
       echo "cinder_ceph_client_uuid:"  | tee -a /etc/openstack_deploy/user_secrets.yml

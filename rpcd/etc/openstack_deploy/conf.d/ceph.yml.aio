@@ -6,6 +6,8 @@ mons_hosts:
 osds_hosts:
   aio1:
     ip: 172.29.236.100
+    affinity:
+      ceph_osd_container: 3
 
 storage_hosts:
   aio1:

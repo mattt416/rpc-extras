@@ -60,8 +60,9 @@ def get_osd_statistics(report=None, osd_id=None):
 
 
 def get_cluster_statistics(report=None):
-    metrics = {}
+    metrics = []
     osds = {'total': 0, 'up': 0, 'in': 0}
+    osds_stats = ('kb', 'kb_avail', 'kb_used')
     pgs = {'total': 0, 'active_clean': 0}
     for osd in report['osdmap']['osds']:
         osds['total'] += 1
@@ -73,13 +74,16 @@ def get_cluster_statistics(report=None):
         pgs['total'] += 1
         if pg['state'] == 'active+clean':
             pgs['active_clean'] += 1
-    metrics['cluster_health'] = STATUSES[report['health']['overall_status']]
+    metrics.append({'name': 'cluster_health', 'type': 'uint32', 'value': STATUSES[report['health']['overall_status']]})
     for k in osds:
-      metrics['osds_%s' % k] = osds[k]
+        metrics.append({'name': 'osds_%s' % k, 'type': 'uint32', 'value': osds[k]})
+    for k in report['pgmap']['osd_stats_sum']:
+        if k in osds_stats:
+            metrics.append({'name': 'osds_%s' % k, 'type': 'uint64', 'value': report['pgmap']['osd_stats_sum'][k]})
     for k in pgs:
-      metrics['pgs_%s' % k] = pgs[k]
-    for name, value in metrics.viewitems():
-        maas_common.metric(name, 'uint32', value)
+        metrics.append({'name': 'pgs_%s' % k, 'type': 'uint32', 'value': pgs[k]})
+    for m in metrics:
+        maas_common.metric(m['name'], m['type'], m['value'])
 
 
 def get_args():

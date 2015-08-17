@@ -29,34 +29,38 @@ def check_command(command):
 
 
 def get_ceph_report(client, keyring, fmt='json'):
-    return check_command(('ceph', '--format', fmt, '--name', client, '--keyring', keyring, 'report'))
+    return check_command(('ceph', '--format', fmt, '--name', client,
+                          '--keyring', keyring, 'report'))
 
 
 def get_mon_statistics(report=None):
-    mon = [m for m in report['health']['health']['health_services'][0]['mons'] if m['name'] == args.host][0]
-    maas_common.metric('health', 'uint32', STATUSES[mon['health']])
-    for key, m_type in (("kb_total", "uint64"), ("kb_used", "uint64"),
-                        ("kb_avail", "uint64"), ("avail_percent", "uint32")):
-        maas_common.metric(key, m_type, mon[key])
+    mon = [m for m in report['monmap']['mons']
+           if m['name'] == args.host]
+    mon_up = mon[0]['rank'] in report['quorum']
+    maas_common.metric_bool('mon_status', mon_up)
 
 
-def get_osd_statistics(report=None, osd_id=None):
-    osd_ref = 'osd.%s' % osd_id
-    for _osd in report['osdmap']['osds']:
-        if _osd['osd'] == osd_id:
-            osd = _osd
-            break
-    for key in ('up', 'in'):
-        name = '_'.join((osd_ref, key))
-        maas_common.metric_bool(name, osd[key])
+def get_osd_statistics(report=None, osd_ids=None):
+    for osd_id in osd_ids:
+        osd_ref = 'osd.%s' % osd_id
+        for _osd in report['osdmap']['osds']:
+            if _osd['osd'] == osd_id:
+                osd = _osd
+                break
+        else:
+            msg = 'The OSD ID %s does not exist.' % osd_id
+            raise maas_common.MaaSException(msg)
+        for key in ('up', 'in'):
+            name = '_'.join((osd_ref, key))
+            maas_common.metric_bool(name, osd[key])
 
-    for _osd in report['pgmap']['osd_stats']:
-        if _osd['osd'] == osd_id:
-            osd = _osd
-            break
-    for key in ('kb', 'kb_used', 'kb_avail'):
-        name = '_'.join((osd_ref, key))
-        maas_common.metric(name, 'uint64', osd[key])
+        for _osd in report['pgmap']['osd_stats']:
+            if _osd['osd'] == osd_id:
+                osd = _osd
+                break
+        for key in ('kb', 'kb_used', 'kb_avail'):
+            name = '_'.join((osd_ref, key))
+            maas_common.metric(name, 'uint64', osd[key])
 
 
 def get_cluster_statistics(report=None):
@@ -74,22 +78,31 @@ def get_cluster_statistics(report=None):
         pgs['total'] += 1
         if pg['state'] == 'active+clean':
             pgs['active_clean'] += 1
-    metrics.append({'name': 'cluster_health', 'type': 'uint32', 'value': STATUSES[report['health']['overall_status']]})
+    metrics.append({'name': 'cluster_health',
+                    'type': 'uint32',
+                    'value': STATUSES[report['health']['overall_status']]})
     for k in osds:
-        metrics.append({'name': 'osds_%s' % k, 'type': 'uint32', 'value': osds[k]})
+        metrics.append({'name': 'osds_%s' % k,
+                        'type': 'uint32',
+                        'value': osds[k]})
     for k in report['pgmap']['osd_stats_sum']:
         if k in osds_stats:
-            metrics.append({'name': 'osds_%s' % k, 'type': 'uint64', 'value': report['pgmap']['osd_stats_sum'][k]})
+            metrics.append({'name': 'osds_%s' % k,
+                            'type': 'uint64',
+                            'value': report['pgmap']['osd_stats_sum'][k]})
     for k in pgs:
-        metrics.append({'name': 'pgs_%s' % k, 'type': 'uint32', 'value': pgs[k]})
+        metrics.append({'name': 'pgs_%s' % k,
+                        'type': 'uint32',
+                        'value': pgs[k]})
     for m in metrics:
         maas_common.metric(m['name'], m['type'], m['value'])
 
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--type', choices=['cluster', 'mon', 'osd'], help='the type of data to return')
-    parser.add_argument('--osd_id', type=int, help='the osd id')
+    parser.add_argument('--type', choices=['cluster', 'mon', 'osd'],
+                        help='the type of data to return')
+    parser.add_argument('--osd_ids', type=int, nargs='+', help='the osd ids')
     parser.add_argument('--host', help='hostname')
     parser.add_argument('--name', required=True, help='Ceph client name')
     parser.add_argument('--keyring', required=True, help='Ceph client keyring')
@@ -97,11 +110,13 @@ def get_args():
 
 
 def main(args):
-    get_statistics = {'cluster': get_cluster_statistics, 'mon': get_mon_statistics, 'osd': get_osd_statistics}
+    get_statistics = {'cluster': get_cluster_statistics,
+                      'mon': get_mon_statistics,
+                      'osd': get_osd_statistics}
     report = get_ceph_report(client=args.name, keyring=args.keyring)
     kwargs = {'report': report}
-    if args.osd_id is not None:
-        kwargs['osd_id'] = args.osd_id
+    if args.osd_ids is not None:
+        kwargs['osd_ids'] = args.osd_ids
     get_statistics[args.type](**kwargs)
     maas_common.status_ok()
 

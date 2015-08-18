@@ -51,7 +51,6 @@ if [[ "${DEPLOY_AIO}" == "yes" ]]; then
       sed -i 's/is_metal: true/is_metal: false/' /etc/openstack_deploy/env.d/ceph.yml
 
       # NOTE: these are non-sensical values; we need to revisit!
-      echo "ceph_stable: true" | tee -a $RPCD_VARS
       echo "journal_size: 5120" | tee -a $RPCD_VARS
       echo "monitor_interface: eth1" | tee -a $RPCD_VARS
       echo "public_network: 172.29.236.0/22" | tee -a $RPCD_VARS

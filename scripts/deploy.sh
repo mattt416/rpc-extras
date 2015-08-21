@@ -54,6 +54,7 @@ if [[ "${DEPLOY_AIO}" == "yes" ]]; then
       echo "journal_size: 5120" | tee -a $RPCD_VARS
       echo "monitor_interface: eth1" | tee -a $RPCD_VARS
       echo "public_network: 172.29.236.0/22" | tee -a $RPCD_VARS
+      echo "raw_multi_journal: false" | tee -a $RPCD_VARS
       echo "osd_directory: true" | tee -a $RPCD_VARS
       echo "osd_directories:" | tee -a $RPCD_VARS
       echo "  - /var/lib/ceph/osd/mydir1" | tee -a $RPCD_VARS

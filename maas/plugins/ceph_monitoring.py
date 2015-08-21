@@ -22,6 +22,7 @@ import subprocess
 
 STATUSES = {'HEALTH_OK': 2, 'HEALTH_WARN': 1, 'HEALTH_ERR': 0}
 
+
 def check_command(command):
     output = subprocess.check_output(command, stderr=subprocess.STDOUT)
     lines = output.strip().split('\n')
@@ -65,35 +66,51 @@ def get_osd_statistics(report=None, osd_ids=None):
 
 def get_cluster_statistics(report=None):
     metrics = []
+
+    # Get overall cluster health
+    metrics.append({'name': 'cluster_health',
+                    'type': 'uint32',
+                    'value': STATUSES[report['health']['overall_status']]})
+
+    # Collect epochs for the mon and osd maps
+    for map_name in ('monmap', 'osdmap'):
+        metrics.append({'name': "%(map)s_epoch" % {'map': map_name},
+                        'type': 'uint32',
+                        'value': report[map_name]['epoch']})
+
+    # Collect OSDs per state
     osds = {'total': 0, 'up': 0, 'in': 0}
-    osds_stats = ('kb', 'kb_avail', 'kb_used')
-    pgs = {'total': 0, 'active_clean': 0}
     for osd in report['osdmap']['osds']:
         osds['total'] += 1
         if osd['up'] == 1:
             osds['up'] += 1
         if osd['in'] == 1:
             osds['in'] += 1
-    for pg in report['pgmap']['pg_stats']:
-        pgs['total'] += 1
-        if pg['state'] == 'active+clean':
-            pgs['active_clean'] += 1
-    metrics.append({'name': 'cluster_health',
-                    'type': 'uint32',
-                    'value': STATUSES[report['health']['overall_status']]})
     for k in osds:
         metrics.append({'name': 'osds_%s' % k,
                         'type': 'uint32',
                         'value': osds[k]})
+
+    # Collect cluster size & utilisation
+    osds_stats = ('kb', 'kb_avail', 'kb_used')
     for k in report['pgmap']['osd_stats_sum']:
         if k in osds_stats:
             metrics.append({'name': 'osds_%s' % k,
                             'type': 'uint64',
                             'value': report['pgmap']['osd_stats_sum'][k]})
+
+    # Collect num PGs and num healthy PGs
+    pgs = {'total': 0, 'active_clean': 0}
+    for pg in report['pgmap']['pg_stats']:
+        pgs['total'] += 1
+        if pg['state'] == 'active+clean':
+            pgs['active_clean'] += 1
     for k in pgs:
         metrics.append({'name': 'pgs_%s' % k,
                         'type': 'uint32',
                         'value': pgs[k]})
+
+    # Submit gathered metrics
     for m in metrics:
         maas_common.metric(m['name'], m['type'], m['value'])
 

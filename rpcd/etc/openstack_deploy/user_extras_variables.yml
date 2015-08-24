@@ -99,3 +99,12 @@ maas_filesystem_critical_threshold: 90.0
 ceph_stable: true
 ceph_stable_release: hammer
 openstack_config: true
+raw_multi_journal: true
+journal_size: 80000
+pool_default_size: 3
+pool_default_min_size: 2
+mon_osd_full_ratio: .90
+mon_osd_nearfull_ratio: .80
+secure_cluster: true
+secure_cluster_flags:
+  - nodelete

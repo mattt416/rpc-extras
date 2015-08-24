@@ -33,11 +33,17 @@ def get_ceph_report(client, keyring, fmt='json'):
                           '--keyring', keyring, 'report'))
 
 
-def get_mon_statistics(report=None):
+def get_mon_statistics(report=None, host=None):
     mon = [m for m in report['monmap']['mons']
-           if m['name'] == args.host]
-    mon_up = mon[0]['rank'] in report['quorum']
-    maas_common.metric_bool('mon_status', mon_up)
+           if m['name'] == host]
+    mon_in = mon[0]['rank'] in report['quorum']
+    maas_common.metric_bool('mon_in_quorum', mon_in)
+    health_status = 0
+    for each in report['health']['health']['health_services'][0]['mons']:
+        if each['name'] == host:
+            health_status = STATUSES[each['health']]
+            break
+    maas_common.metric('mon_health', 'uint32', health_status)
 
 
 def get_osd_statistics(report=None, osd_ids=None):
@@ -102,7 +108,7 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--type', choices=['cluster', 'mon', 'osd'],
                         help='the type of data to return')
-    parser.add_argument('--osd_ids', type=int, nargs='+', help='the osd ids')
+    parser.add_argument('--osd_ids', help='Comma separated list of OSD IDs')
     parser.add_argument('--host', help='hostname')
     parser.add_argument('--name', required=True, help='Ceph client name')
     parser.add_argument('--keyring', required=True, help='Ceph client keyring')
@@ -115,8 +121,10 @@ def main(args):
                       'osd': get_osd_statistics}
     report = get_ceph_report(client=args.name, keyring=args.keyring)
     kwargs = {'report': report}
-    if args.osd_ids is not None:
-        kwargs['osd_ids'] = args.osd_ids
+    if args.type == 'osd':
+        kwargs['osd_ids'] = [int(i) for i in args.osd_ids.split(' ')]
+    if args.type == 'mon':
+        kwargs['host'] = args.host
     get_statistics[args.type](**kwargs)
     maas_common.status_ok()
 

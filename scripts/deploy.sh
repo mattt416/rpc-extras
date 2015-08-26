@@ -94,7 +94,7 @@ if [[ "${DEPLOY_OSAD}" == "yes" ]]; then
 
   if [[ "$DEPLOY_CEPH" == "yes" ]]; then
     pushd ${RPCD_DIR}/playbooks/
-      install_bits ceph.yml
+      install_bits ceph-all.yml
     popd
   fi
 

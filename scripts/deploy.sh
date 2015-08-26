@@ -4,7 +4,6 @@ set -e -u -x
 set -o pipefail
 source /opt/rpc-openstack/os-ansible-deployment/scripts/scripts-library.sh
 
-export ANSIBLE_ROLE_FILE=${ANSIBLE_ROLE_FILE:-"/opt/rpc-openstack/ansible-role-requirements.yml"}
 export ADMIN_PASSWORD=${ADMIN_PASSWORD:-"secrete"}
 export DEPLOY_AIO=${DEPLOY_AIO:-"no"}
 export DEPLOY_HAPROXY=${DEPLOY_HAPROXY:-"no"}

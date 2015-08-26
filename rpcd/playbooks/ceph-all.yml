@@ -13,13 +13,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: 1. move this up to site.yml for example, since _all_ galaxy roles will get updated here
-#       2. remove ANSIBLE_ROLE_FILE from scripts/deploy.sh
-- name: Update ansible galaxy roles
-  hosts: localhost
-  user: root
-  tasks:
-    - command: ansible-galaxy install --role-file=/opt/rpc-openstack/ansible-role-requirements.yml --ignore-errors --force
-
 - include: ceph-mon.yml
 - include: ceph-osd.yml

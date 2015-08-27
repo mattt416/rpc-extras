@@ -4,7 +4,6 @@ set -e -u -x
 set -o pipefail
 source /opt/rpc-openstack/os-ansible-deployment/scripts/scripts-library.sh
 
-export ANSIBLE_ROLE_FILE=${ANSIBLE_ROLE_FILE:-"/opt/rpc-openstack/ansible-role-requirements.yml"}
 export ADMIN_PASSWORD=${ADMIN_PASSWORD:-"secrete"}
 export DEPLOY_AIO=${DEPLOY_AIO:-"no"}
 export DEPLOY_HAPROXY=${DEPLOY_HAPROXY:-"no"}
@@ -95,7 +94,7 @@ if [[ "${DEPLOY_OSAD}" == "yes" ]]; then
 
   if [[ "$DEPLOY_CEPH" == "yes" ]]; then
     pushd ${RPCD_DIR}/playbooks/
-      install_bits ceph.yml
+      install_bits ceph-all.yml
     popd
   fi
 

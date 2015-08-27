@@ -96,6 +96,7 @@ maas_filesystem_critical_threshold: 90.0
 #   - { package: "*", release: "MariaDB" }
 
 # Ceph
+fsid: '{{ fsid_uuid }}'
 ceph_stable: true
 ceph_stable_release: hammer
 openstack_config: true

@@ -13,6 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+- name: Gather mons facts for ceph.conf template
+  hosts: mons
+
 - name: Deploy osds
   hosts: osds
   user: root

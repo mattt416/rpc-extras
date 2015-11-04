@@ -1,6 +1,6 @@
 [submodule "openstack-ansible"]
 	path = openstack-ansible
-	url = https://git.openstack.org/openstack/openstack-ansible
+	url = https://github.com/Apsu/openstack-ansible
 [submodule "rpcd/playbooks/roles/ceph-common"]
 	path = rpcd/playbooks/roles/ceph-common
 	url = https://github.com/ceph/ansible-ceph-common

@@ -20,6 +20,39 @@
   hosts: osds
   user: root
   pre_tasks:
+    - name: Use the lxc-openstack aa profile
+      lxc_container:
+        name: "{{ container_name }}"
+        container_config:
+          - "lxc.aa_profile=unconfined"
+      delegate_to: "{{ physical_host }}"
+      register: container_config
+      when: not is_metal | bool
+      tags:
+        - lxc-aa-profile
+    - name: Ceph OSD extra lxc config
+      lxc_container:
+        name: "{{ container_name }}"
+        container_config:
+          - "lxc.cgroup.devices.allow=a *:* rmw"
+          - "lxc.mount.entry=udev dev devtmpfs defaults 0 0"
+      delegate_to: "{{ physical_host }}"
+      when: not is_metal | bool
+      register: container_extra_config
+      tags:
+        - ceph-osd-container-setup
+    - name: Wait for container ssh
+      wait_for:
+        port: "22"
+        delay: "{{ ssh_delay }}"
+        search_regex: "OpenSSH"
+        host: "{{ ansible_ssh_host }}"
+      delegate_to: "{{ physical_host }}"
+      when: >
+            (container_config is defined and container_config | changed) or
+            (container_extra_config is defined and container_extra_config | changed)
+      tags:
+        - ssh-wait
     - name: Create log dir
       file:
         path: "{{ item.path }}"

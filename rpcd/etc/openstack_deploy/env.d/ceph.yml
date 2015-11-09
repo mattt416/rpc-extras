@@ -37,7 +37,6 @@ container_skel:
     contains:
       - osds
     properties:
-      is_metal: true
       container_release: trusty
       service_name: ceph
 

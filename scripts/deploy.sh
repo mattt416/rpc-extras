@@ -122,59 +122,59 @@ if [[ "${DEPLOY_OA}" == "yes" ]]; then
     popd
   fi
 
-  # setup the infrastructure
-  run_ansible setup-infrastructure.yml
-
-  # This section is duplicated from OSA/run-playbooks as RPC doesn't currently
-  # make use of run-playbooks. (TODO: hughsaunders)
-  # When running in an AIO, we need to drop the following iptables rule in any neutron_agent containers
-  # to ensure that instances can communicate with the neutron metadata service.
-  # This is necessary because in an AIO environment there are no physical interfaces involved in
-  # instance -> metadata requests, and this results in the checksums being incorrect.
-  if [ "${DEPLOY_AIO}" == "yes" ]; then
-    ansible neutron_agent -m command \
-                          -a '/sbin/iptables -t mangle -A POSTROUTING -p tcp --sport 80 -j CHECKSUM --checksum-fill'
-    ansible neutron_agent -m shell \
-                          -a 'DEBIAN_FRONTEND=noninteractive apt-get install iptables-persistent'
-  fi
-
-  # setup openstack
-  run_ansible setup-openstack.yml
-
-  if [[ "${DEPLOY_TEMPEST}" == "yes" ]]; then
-    # Deploy tempest
-    run_ansible os-tempest-install.yml
-  fi
+#  # setup the infrastructure
+#  run_ansible setup-infrastructure.yml
+#
+#  # This section is duplicated from OSA/run-playbooks as RPC doesn't currently
+#  # make use of run-playbooks. (TODO: hughsaunders)
+#  # When running in an AIO, we need to drop the following iptables rule in any neutron_agent containers
+#  # to ensure that instances can communicate with the neutron metadata service.
+#  # This is necessary because in an AIO environment there are no physical interfaces involved in
+#  # instance -> metadata requests, and this results in the checksums being incorrect.
+#  if [ "${DEPLOY_AIO}" == "yes" ]; then
+#    ansible neutron_agent -m command \
+#                          -a '/sbin/iptables -t mangle -A POSTROUTING -p tcp --sport 80 -j CHECKSUM --checksum-fill'
+#    ansible neutron_agent -m shell \
+#                          -a 'DEBIAN_FRONTEND=noninteractive apt-get install iptables-persistent'
+#  fi
+#
+#  # setup openstack
+#  run_ansible setup-openstack.yml
+#
+#  if [[ "${DEPLOY_TEMPEST}" == "yes" ]]; then
+#    # Deploy tempest
+#    run_ansible os-tempest-install.yml
+#  fi
 
 fi
 
-# begin the RPC installation
-cd ${RPCD_DIR}/playbooks/
-
-# build the RPC python package repository
-run_ansible repo-build.yml
-
-# configure all hosts and containers to use the RPC python packages
-run_ansible repo-pip-setup.yml
-
-# configure everything for RPC support access
-run_ansible rpc-support.yml
-
-# configure the horizon extensions
-run_ansible horizon_extensions.yml
-
-# deploy and configure RAX MaaS
-if [[ "${DEPLOY_MAAS}" == "yes" ]]; then
-  run_ansible setup-maas.yml
-  run_ansible verify-maas.yml
-fi
-
-# deploy and configure the ELK stack
-if [[ "${DEPLOY_ELK}" == "yes" ]]; then
-  run_ansible setup-logging.yml
-
-  # deploy the LB required for the ELK stack
-  if [[ "${DEPLOY_HAPROXY}" == "yes" ]]; then
-    run_ansible haproxy.yml
-  fi
-fi
+## begin the RPC installation
+#cd ${RPCD_DIR}/playbooks/
+#
+## build the RPC python package repository
+#run_ansible repo-build.yml
+#
+## configure all hosts and containers to use the RPC python packages
+#run_ansible repo-pip-setup.yml
+#
+## configure everything for RPC support access
+#run_ansible rpc-support.yml
+#
+## configure the horizon extensions
+#run_ansible horizon_extensions.yml
+#
+## deploy and configure RAX MaaS
+#if [[ "${DEPLOY_MAAS}" == "yes" ]]; then
+#  run_ansible setup-maas.yml
+#  run_ansible verify-maas.yml
+#fi
+#
+## deploy and configure the ELK stack
+#if [[ "${DEPLOY_ELK}" == "yes" ]]; then
+#  run_ansible setup-logging.yml
+#
+#  # deploy the LB required for the ELK stack
+#  if [[ "${DEPLOY_HAPROXY}" == "yes" ]]; then
+#    run_ansible haproxy.yml
+#  fi
+#fi

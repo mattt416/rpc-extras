@@ -20,8 +20,9 @@ export UNAUTHENTICATED_APT=${UNAUTHENTICATED_APT:-no}
 
 export BASE_DIR='/opt/rpc-openstack'
 export OA_DIR='/opt/rpc-openstack/openstack-ansible'
+export OA_OVERRIDES='/etc/openstack_deploy/user_osa_variables_overrides.yml'
 export RPCD_DIR='/opt/rpc-openstack/rpcd'
-export RPCD_VARS='/etc/openstack_deploy/user_rpco_variables_defaults.yml'
+export RPCD_OVERRIDES='/etc/openstack_deploy/user_rpco_variables_overrides.yml'
 export RPCD_SECRETS='/etc/openstack_deploy/user_rpco_secrets.yml'
 
 source ${BASE_DIR}/scripts/functions.sh
@@ -57,7 +58,7 @@ if [[ "${DEPLOY_AIO}" == "yes" ]]; then
   if [[ ! -d /etc/openstack_deploy/ ]]; then
     ./scripts/bootstrap-aio.sh
     # move OSA variables file to AIO location.
-    mv /etc/openstack_deploy/user_variables.yml /etc/openstack_deploy/user_osa_aio_variables.yml
+    mv /etc/openstack_deploy/user_variables.yml $OA_OVERRIDES
     pushd ${RPCD_DIR}
       for filename in $(find etc/openstack_deploy/ -type f -iname '*.yml'); do
         if [[ ! -a "/${filename}" ]]; then
@@ -66,17 +67,17 @@ if [[ "${DEPLOY_AIO}" == "yes" ]]; then
       done
     popd
     # ensure that the elasticsearch JVM heap size is limited
-    sed -i 's/# elasticsearch_heap_size_mb/elasticsearch_heap_size_mb/' $RPCD_VARS
+    echo "elasticsearch_heap_size_mb: 1024" >> $RPCD_OVERRIDES
     # set the kibana admin password
     sed -i "s/kibana_password:.*/kibana_password: ${ADMIN_PASSWORD}/" $RPCD_SECRETS
     # set the load balancer name to the host's name
-    sed -i "s/lb_name: .*/lb_name: '$(hostname)'/" $RPCD_VARS
+    echo "lb_name: '$(hostname)'" >> $RPCD_OVERRIDES
     # set the notification_plan to the default for Rackspace Cloud Servers
-    sed -i "s/maas_notification_plan: .*/maas_notification_plan: npTechnicalContactsEmail/" $RPCD_VARS
-    # the AIO needs this enabled to test the feature, but $RPCD_VARS defaults this to false
-    sed -i "s/cinder_service_backup_program_enabled: .*/cinder_service_backup_program_enabled: true/" /etc/openstack_deploy/user_osa_variables_defaults.yml
+    echo "maas_notification_plan: npTechnicalContactsEmail" >> $RPCD_OVERRIDES
+    # the AIO needs this enabled to test the feature, but $RPCD_OVERRIDES defaults this to false
+    echo "cinder_service_backup_program_enabled: true" >> $OA_OVERRIDES
     # set network speed for vms
-    echo "net_max_speed: 1000" >>$RPCD_VARS
+    echo "net_max_speed: 1000" >> $RPCD_OVERRIDES
 
     # set the necessary bits for ceph
     if [[ "$DEPLOY_CEPH" == "yes" ]]; then
@@ -86,20 +87,20 @@ if [[ "${DEPLOY_AIO}" == "yes" ]]; then
       # so the MONs think we have 3 OSDs on different hosts.
       sed -i 's/is_metal: true/is_metal: false/' /etc/openstack_deploy/env.d/ceph.yml
 
-      sed -i "s/journal_size:.*/journal_size: 1024/" $RPCD_VARS
-      echo "monitor_interface: eth1" | tee -a $RPCD_VARS
-      echo "public_network: 172.29.236.0/22" | tee -a $RPCD_VARS
-      sed -i "s/raw_multi_journal:.*/raw_multi_journal: false/" $RPCD_VARS
-      echo "osd_directory: true" | tee -a $RPCD_VARS
-      echo "osd_directories:" | tee -a $RPCD_VARS
-      echo "  - /var/lib/ceph/osd/mydir1" | tee -a $RPCD_VARS
-      echo "glance_default_store: rbd" | tee -a /etc/openstack_deploy/user_osa_variables_defaults.yml
-      echo "nova_libvirt_images_rbd_pool: vms" | tee -a $RPCD_VARS
+      echo "journal_size: 1024" >> $RPCD_OVERRIDES
+      echo "monitor_interface: eth1" >> $RPCD_OVERRIDES
+      echo "public_network: 172.29.236.0/22" >> $RPCD_OVERRIDES
+      echo "raw_multi_journal: false" >> $RPCD_OVERRIDES
+      echo "osd_directory: true" >> $RPCD_OVERRIDES
+      echo "osd_directories:" >> $RPCD_OVERRIDES
+      echo "  - /var/lib/ceph/osd/mydir1" >> $RPCD_OVERRIDES
+      echo "glance_default_store: rbd" >> $OA_OVERRIDES
+      echo "nova_libvirt_images_rbd_pool: vms" >> $OA_OVERRIDES
     else
       if [[ "$DEPLOY_SWIFT" == "yes" ]]; then
-        echo "glance_default_store: swift" | tee -a /etc/openstack_deploy/user_osa_variables_defaults.yml
+        echo "glance_default_store: swift" >> $OA_OVERRIDES
       else
-        echo "glance_default_store: file" | tee -a /etc/openstack_deploy/user_osa_variables_defaults.yml
+        echo "glance_default_store: file" >> $OA_OVERRIDES
       fi
     fi
     # set the ansible inventory hostname to the host's name
